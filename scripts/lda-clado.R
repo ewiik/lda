@@ -36,13 +36,13 @@ commun.spp=z$terms
 
 #plot relative abundance of component communities for each sampling unit 
 #(i.e., along the gradient)
+groups <- dim(commun.plot)[2]
 plot(NA,NA,xlim=c(0,33),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='Relative abundance')
-for (i in 1:5){
+for (i in 1:groups){
   lines(1:32,commun.plot[,i],col=i)
 }
 
 #plot relative abundance of species 1:n in component community
-groups <- dim(commun.plot)[2]
 opar <- par()
 par(mfrow=c(groups,1))
 for (i in 1:groups){
