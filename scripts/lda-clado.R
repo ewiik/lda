@@ -4,6 +4,7 @@
 library("topicmodels")
 library("analogue")
 library("ggplot2")
+library("reshape")
 
 papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
   theme(legend.position='top')

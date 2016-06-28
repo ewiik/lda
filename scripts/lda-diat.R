@@ -5,22 +5,35 @@ library("topicmodels")
 library("rioja")
 library("vegan")
 library("ggplot2")
+library("reshape")
+
+papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
+  theme(legend.position='top')
 
 ## read in data
 ## Gill data from email Heather sent June 20, 2016 'Gall Lake diatom raw counts'
 ##    They are as indicated raw counts, with number of diatoms counted per sample as a column
 alldiats <- read.csv('../data/private/7.5mCoreRawCounts.csv') 
 
-## remove things that aren't diatoms
+## remove things that aren't diatoms and change NA to 0
 alldiats[is.na(alldiats)] <- 0
+notdiats <- which(names(alldiats) %in% c('bottom', 'top', 'AGE', 'DI.Depth',
+                                         'Unknowns', 'X..Diatoms', 'Chrysophyte.scales',
+                                         'Chysophyte.cysts', 'C.D.index', 'Microspheres'))
 
-discardrows <- which(rowSums(alldiats, na.rm = TRUE) == 0)
-discardcols <- which(colSums(alldiats, na.rm = TRUE) == 0)
-alldiats <- alldiats[-discardrows, -discardcols]
+if(any(rowSums(alldiats[,-notdiats], na.rm = TRUE) == 0)) {
+  discardrows <- which(rowSums(alldiats[,-notdiats]) == 0)
+  alldiats <- alldiats[-discardrows, ]
+}
+if(any(colSums(alldiats, na.rm = TRUE) == 0)) {
+  discardcols <- which(colSums(alldiats, na.rm = TRUE) == 0)
+  alldiats <- alldiats[, -discardcols]
+}
+notdiats <- which(names(alldiats) %in% c('bottom', 'top', 'AGE', 'DI.Depth',
+                                         'Unknowns', 'X..Diatoms', 'Chrysophyte.scales',
+                                         'Chysophyte.cysts', 'C.D.index', 'Microspheres'))
 
-diats <- alldiats[,-which(names(alldiats) %in% c('bottom', 'top', 'AGE', 'DI.Depth',
-                                                 'Unknowns', 'X..Diatoms', 'Chrysophyte.scales',
-                                                 'Chysophyte.cysts', 'C.D.index', 'Microspheres'))]
+diats <- alldiats[,-notdiats]
 
 dcounts <- as.matrix(diats)
 ## FIXME: what about rare species? prune for e.g. 5%? 
