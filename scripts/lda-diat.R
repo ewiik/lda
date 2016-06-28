@@ -1,6 +1,10 @@
-## script that does LDA for diatom count data from Gill Lake
+## script that does LDA for diatom count data from Gill Lake and compares this with
+##    CONISS as per previous analysis
 
 library("topicmodels")
+library("rioja")
+library("vegan")
+library("ggplot2")
 
 ## read in data
 ## Gill data from email Heather sent June 20, 2016 'Gall Lake diatom raw counts'
@@ -8,18 +12,18 @@ library("topicmodels")
 alldiats <- read.csv('../data/private/7.5mCoreRawCounts.csv') 
 
 ## remove things that aren't diatoms
+alldiats[is.na(alldiats)] <- 0
+
+discardrows <- which(rowSums(alldiats, na.rm = TRUE) == 0)
+discardcols <- which(colSums(alldiats, na.rm = TRUE) == 0)
+alldiats <- alldiats[-discardrows, -discardcols]
+
 diats <- alldiats[,-which(names(alldiats) %in% c('bottom', 'top', 'AGE', 'DI.Depth',
                                                  'Unknowns', 'X..Diatoms', 'Chrysophyte.scales',
                                                  'Chysophyte.cysts', 'C.D.index', 'Microspheres'))]
-diats[is.na(diats)] <- 0
-
-discardrows <- which(rowSums(diats, na.rm = TRUE) == 0)
-discardcols <- which(colSums(diats, na.rm = TRUE) == 0)
-diats <- diats[-discardrows, -discardcols]
 
 dcounts <- as.matrix(diats)
-## FIXME: what about rare species? prune for e.g. 5%? and these are all just counts up to ca 400
-## individuals, not normalised to an amount of sediment for example
+## FIXME: what about rare species? prune for e.g. 5%? 
 
 #run LDA for multiple settings of group number
 SEED <- 2010
@@ -57,5 +61,44 @@ for (i in 1:groups){
 }
 par(opar)
 
-## save chosen model
+## make into ggplot
+agedf <- data.frame(cbind(ldadiat@gamma, topics(ldadiat), alldiats$AGE))
+colnames <- c(as.character(seq_len(ldadiat@k)), "Cluster", "Year")
+names(agedf) <- colnames
+agedf$Cluster <- factor(agedf$Cluster)
+
+agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
+agesplit <- with(agestack, split(agestack, list(Group)))
+#lapply(agesplit, summary)
+
+ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
+  papertheme +
+  scale_linetype_manual(name='Group', values = c("solid", "longdash","dotdash")) +
+  scale_colour_manual(name="Cluster", values = c("#5e3c99", "#e66101","#b2abd2"))+
+  geom_line() +
+  geom_point(aes(col=Cluster)) +
+  theme(legend.box = "horizontal") +
+  ylab("Proportion of population")
+
+
+
+## ==================================================================================================
+## CONISS
+## ==================================================================================================
+##  Diatom zones in the composite core were determined by a depth-constrained cluster analysis, 
+##      using Euclidean distance as a measure of similarity, conducted with Tilia v. 2.02 (Grimm 1987), 
+##      and by optimal zonation using the broken-stick method in PSIMPOLL v. 4.10 (Bennett 1996).
+## from heather: "The broken stick was just something we ran and i dont think ever used the results... 
+##    it was similar enough to coniss that we just left the coniss"
+diss <- vegdist(diats, method='euclidean')
+clust <- chclust(diss, method = 'coniss')
+bclust <- bstick(clust) # --> 4 zones as drawn in publication
+
+diats$Group <- cutree(clust, k = 4)
+
+## ==================================================================================================
+## SAVE OBJECTS
+## ==================================================================================================
+
+## save chosen lda model
 saveRDS(ldaclado, "../data/lda-clado.rds")
