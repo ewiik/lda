@@ -1,5 +1,6 @@
 ## script that does LDA for count data from Cunswick Tarn, etc. and compares it with previously
 ##    done analysis (taken code from cunspaper.pcurves.R and followed wiiketal)
+## see also https://www.quora.com/Could-latent-Dirichlet-allocation-solved-by-Gibbs-sampling-versus-variational-EM-yield-different-results
 
 library("topicmodels")
 library("analogue")
@@ -31,7 +32,11 @@ mods <- mapply(LDA, k=nlist, x=creps)
 
 # compare them
 aics <- do.call(rbind,lapply(mods, AIC))
+bics <- do.call(rbind,lapply(mods, BIC))
+pdf("../data/private/ICs-clado.pdf", onefile = TRUE)
 plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
+plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
+dev.off()
 
 # select best manually
 ldaclado <- mods[[5]]
@@ -65,7 +70,7 @@ agedf$Group <- factor(agedf$Group)
 
 agestack <- melt(agedf, id.vars=c('Year','Group'), variable_name = 'Topic')
 agesplit <- with(agestack, split(agestack, list(Group)))
-lapply(agesplit, summary)
+#lapply(agesplit, summary)
 
 ggplot(data = agestack, aes(x=Year, y=value, col=Topic, lty=Topic)) +
   papertheme +
@@ -76,6 +81,17 @@ ggplot(data = agestack, aes(x=Year, y=value, col=Topic, lty=Topic)) +
   geom_vline(xintercept = c(1390, 1900, 1930, 2000), col='grey50') +
   geom_line() 
   
+cladotermit <- ggplot(data = agestack, aes(y=Year, x=Topic, col=Group, size=value)) +
+  papertheme +
+  #scale_color_distiller(name="Value", palette = 'PuOr') +
+  scale_size_continuous(name="Relative abundance") + #guide = FALSE
+  scale_color_brewer(name="Community", palette = 'Dark2') +
+  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
+  geom_point(alpha=0.6) +
+  theme(legend.box = "vertical") +
+  xlab("Species group") +
+  guides(colour=guide_legend(nrow=1,byrow=TRUE))
+
 
 
 ## ==================================================================================================

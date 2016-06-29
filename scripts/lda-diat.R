@@ -1,5 +1,6 @@
 ## script that does LDA for diatom count data from Gill Lake and compares this with
 ##    CONISS as per previous analysis
+## see also https://www.quora.com/Could-latent-Dirichlet-allocation-solved-by-Gibbs-sampling-versus-variational-EM-yield-different-results
 
 library("topicmodels")
 library("rioja")
@@ -47,8 +48,11 @@ mods <- mapply(LDA, k=nlist, x=creps)
 
 # compare them
 aics <- do.call(rbind,lapply(mods, AIC))
+bics <- do.call(rbind,lapply(mods, BIC))
+pdf("../data/private/ICs-diat.pdf", onefile = TRUE)
 plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
-
+plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
+dev.off()
 # select best manually
 ldadiat <- mods[[2]]
 
@@ -84,14 +88,29 @@ agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
 agesplit <- with(agestack, split(agestack, list(Group)))
 #lapply(agesplit, summary)
 
-ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
+## try to get this: http://stackoverflow.com/questions/9968975/using-ggplot2-in-r-how-do-i-make-the-background-of-a-graph-different-colours-in
+## or this: http://stackoverflow.com/questions/9847559/conditionally-change-panel-background-with-facet-grid  
+diatrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
   papertheme +
+  geom_rect(fill=c("grey50", "blue"),xmin = c(-500, 100), xmax= c(100,2000), ymin=-Inf, ymax=Inf,  alpha = 0.01, data=agedf, 
+            inherit.aes = FALSE) +
   scale_linetype_manual(name='Group', values = c("solid", "longdash","dotdash")) +
   scale_colour_manual(name="Cluster", values = c("#5e3c99", "#e66101","#b2abd2"))+
   geom_line() +
   geom_point(aes(col=Cluster)) +
   theme(legend.box = "horizontal") +
   ylab("Proportion of population")
+
+diatermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), size=value)) +
+  papertheme +
+  #scale_color_distiller(name="Value", palette = 'PuOr') +
+  scale_size_continuous(name = "Relative abundance") + #guide = FALSE
+  scale_color_brewer(name="Community", palette = 'Dark2') +
+  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
+  geom_point(alpha=0.6) +
+  theme(legend.box = "vertical") +
+  xlab("Species group") +
+  guides(colour=guide_legend(nrow=1,byrow=TRUE))
 
 
 

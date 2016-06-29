@@ -1,5 +1,6 @@
 ## script that does LDA for diatom count data from Foy Lake and compares this with
 ##    previous analysis
+## see also https://www.quora.com/Could-latent-Dirichlet-allocation-solved-by-Gibbs-sampling-versus-variational-EM-yield-different-results
 
 library("topicmodels")
 library("rioja")
@@ -87,7 +88,19 @@ ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
   theme(legend.box = "horizontal") +
   ylab("Proportion of population")
 
+foytermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), size=value)) +
+  papertheme +
+  #scale_color_distiller(name="Value", palette = 'PuOr') +
+  scale_size_continuous(name = "Relative abundance") + #guide = FALSE
+  scale_color_brewer(name="Community", palette = 'Dark2') +
+  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
+  geom_point(alpha=0.4) +
+  theme(legend.box = "vertical") +
+  xlab("Species group") +
+  guides(colour=guide_legend(nrow=1,byrow=TRUE))
 
+## NOTE.... Is the rogue community (6) really necessary? what would happen if we punished it
+##    down to 5 groups?
 
 ## ==================================================================================================
 ## CONISS
