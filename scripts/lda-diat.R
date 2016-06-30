@@ -90,10 +90,25 @@ agesplit <- with(agestack, split(agestack, list(Group)))
 
 ## try to get this: http://stackoverflow.com/questions/9968975/using-ggplot2-in-r-how-do-i-make-the-background-of-a-graph-different-colours-in
 ## or this: http://stackoverflow.com/questions/9847559/conditionally-change-panel-background-with-facet-grid  
+## startstops: cluster 3: bottom to 96, 1: 95, 3: 94-93. 1:92, 3:91, 2:90, 3:88"89, 1:87, 2: 86, 1:85, 3:84,
+## 1: 81:83, 3:79-80, 2:78, 3:76-77, 1:75, 3:74-68, 2:67-31, 1: 30-1   
+startstops <- c(30, 67, 74, 75, 77, 78, 80, 83, 84, 85, 86, 87, 89, 90, 91, 92, 94, 95)
+clusterbins <- agedf$Cluster[startstops]
+yearstarts <- agedf$Year[startstops]
+stopstarts <- sapply( c(30, 67, 74, 75, 77, 78, 80, 83, 84, 85, 86, 87, 89, 90, 91, 92, 94, 95), 
+                      function(x) x + 1)
+yearstops <- agedf$Year[stopstarts]
+yearbins <- rowMeans(cbind(yearstarts, yearstops))
+yearbins <- c(agedf$Year[1], yearbins, agedf$Year[nrow(agedf)])
+## create df: basically pair with one lag so that I have columns xmin, xmax, ymin, ymax, cluster
+##  --> http://stackoverflow.com/questions/26741703/adding-multiple-shadows-rectangles-to-ggplot2-graph
+
 diatrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
   papertheme +
-  geom_rect(fill=c("grey50", "blue"),xmin = c(-500, 100), xmax= c(100,2000), ymin=-Inf, ymax=Inf,  alpha = 0.01, data=agedf, 
+  geom_rect(fill=c("grey50", "blue"),xmin = c(-500, 100), xmax= c(100,2000), ymin=-Inf, ymax=Inf,  
+            alpha = 0.01, data=agedf, 
             inherit.aes = FALSE) +
+  #annotate("rect", xmin=c(-500, 100), xmax=c(100,200), ymin=-Inf, ymax=-Inf, colour = 'blue') +
   scale_linetype_manual(name='Group', values = c("solid", "longdash","dotdash")) +
   scale_colour_manual(name="Cluster", values = c("#5e3c99", "#e66101","#b2abd2"))+
   geom_line() +
