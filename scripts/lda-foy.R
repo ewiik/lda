@@ -8,11 +8,11 @@ library("vegan")
 library("ggplot2")
 library("reshape")
 
-papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
-  theme(legend.position='top')
-
 ## read in data
 ## openly available with publication Spanbaueretal2014ProlongedIinstabilityBeforeRegimeShift
+if (!file.exists('../data/Spanbaueretal2014supp.csv')) {
+  stop("get supporting data from Spanbaueretal2014 paper")
+}
 foy <- read.csv('../data/Spanbaueretal2014supp.csv') 
 foyyears <- foy$YB1950
 
@@ -25,7 +25,7 @@ foycounts <- as.matrix(foy)
 foycounts <- apply(foycounts, 2, round)
 
 
-#run LDA for multiple settings of group number.. Gibbs vs VEM
+#run LDA for multiple settings of group number.. Gibbs vs VEM?
 SEED <- 2010
 nlist <- 3:8
 reptimes <- length(nlist)
@@ -36,14 +36,21 @@ modsgibbs <- mapply(LDA, k=nlist, x=creps, method="Gibbs")
 
 # compare them
 aics <- do.call(rbind,lapply(mods, AIC))
-aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
+bics <- do.call(rbind,lapply(mods, BIC))
+#aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
 
-plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)', ylim=c(130000,300000))
-points(aicsgibbs ~ nlist, pch = 3)
+pdf("../data/private/ICs-foy.pdf", onefile = TRUE)
+plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
+plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
+dev.off()
 
-# select best manually.... 6 groups? though gibbs is different
-ldafoy <- mods[[4]]
-ldafoygibbs <- modsgibbs[[5]]
+#plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)', ylim=c(130000,300000))
+#points(aicsgibbs ~ nlist, pch = 3)
+
+## select best manually.... though gibbs is different
+## NOTE.... Is the rogue community (6) really necessary out of mods? 
+ldafoy <- mods[[3]]
+#ldafoygibbs <- modsgibbs[[]]
 
 #get parameter estimates
 z=posterior(ldafoy)
@@ -67,40 +74,7 @@ for (i in 1:groups){
 }
 par(opar)
 
-## make into ggplot
-agedf <- data.frame(cbind(ldafoy@gamma, topics(ldafoy), foyyears))
-colnames <- c(as.character(seq_len(ldafoy@k)), "Cluster", "Year")
-names(agedf) <- colnames
-agedf$Cluster <- factor(agedf$Cluster)
 
-agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
-agesplit <- with(agestack, split(agestack, list(Group)))
-#lapply(agesplit, summary)
-
-ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
-  papertheme +
-  scale_linetype_manual(name='Group', values = c("solid", "longdash","dotdash",
-                                                 "longdash", "dotdash","solid")) +
-  scale_colour_manual(name="Cluster", values = c("#5e3c99", "#e66101","#b2abd2", 
-                                                 "yellow", "blue","black"))+
-  geom_line() +
-  geom_point(aes(col=Cluster)) +
-  theme(legend.box = "horizontal") +
-  ylab("Proportion of population")
-
-foytermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), size=value)) +
-  papertheme +
-  #scale_color_distiller(name="Value", palette = 'PuOr') +
-  scale_size_continuous(name = "Relative abundance") + #guide = FALSE
-  scale_color_brewer(name="Community", palette = 'Dark2') +
-  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
-  geom_point(alpha=0.4) +
-  theme(legend.box = "vertical") +
-  xlab("Species group") +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
-
-## NOTE.... Is the rogue community (6) really necessary? what would happen if we punished it
-##    down to 5 groups?
 
 ## ==================================================================================================
 ## CONISS

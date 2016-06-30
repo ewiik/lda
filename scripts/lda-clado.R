@@ -7,12 +7,12 @@ library("analogue")
 library("ggplot2")
 library("reshape")
 
-papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
-  theme(legend.position='top')
-
 ## read in data
 ## Cunswick data from my files in static R folder (the 'archive'); multiplied to individuals
 ##    per 100ml of sediment
+if (any(!file.exists("../data/cunscladofinalless.csv",
+                     "../data/cladoyears.rds"))) {
+  stop("Get cladoceran data from Emma or from open data repo TBC") }
 allclados <- read.csv('../data/cunscladofinalless.csv') 
 cladoyears <- readRDS('../data/cladoyears.rds') 
 
@@ -61,37 +61,6 @@ for (i in 1:groups){
   plot(1:22,commun.spp[i,],type='l',col=i,ylim=c(0,0.5),xlab='Species',ylab='Relative abundance')
 }
 par(opar)
-
-## make into ggplot
-agedf <- data.frame(cbind(ldaclado@gamma, topics(ldaclado), cladoyears))
-colnames <- c(as.character(seq_len(ldaclado@k)), "Group", "Year")
-names(agedf) <- colnames
-agedf$Group <- factor(agedf$Group)
-
-agestack <- melt(agedf, id.vars=c('Year','Group'), variable_name = 'Topic')
-agesplit <- with(agestack, split(agestack, list(Group)))
-#lapply(agesplit, summary)
-
-ggplot(data = agestack, aes(x=Year, y=value, col=Topic, lty=Topic)) +
-  papertheme +
-  scale_linetype_manual(name='Group', values = c("dotdash", "solid","solid", "longdash", "dotdash", 
-                                                            "dotdash")) +
-  scale_colour_manual(name="Group", values = c("#b2abd2", "#e66101","#b2abd2", "#5e3c99", "#e66101",
-                                              "#5e3c99"))+
-  geom_vline(xintercept = c(1390, 1900, 1930, 2000), col='grey50') +
-  geom_line() 
-  
-cladotermit <- ggplot(data = agestack, aes(y=Year, x=Topic, col=Group, size=value)) +
-  papertheme +
-  #scale_color_distiller(name="Value", palette = 'PuOr') +
-  scale_size_continuous(name="Relative abundance") + #guide = FALSE
-  scale_color_brewer(name="Community", palette = 'Dark2') +
-  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
-  geom_point(alpha=0.6) +
-  theme(legend.box = "vertical") +
-  xlab("Species group") +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
-
 
 
 ## ==================================================================================================

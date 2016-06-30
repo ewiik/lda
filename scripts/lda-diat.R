@@ -1,4 +1,4 @@
-## script that does LDA for diatom count data from Gill Lake and compares this with
+## script that does LDA for diatom count data from Gull Lake and compares this with
 ##    CONISS as per previous analysis
 ## see also https://www.quora.com/Could-latent-Dirichlet-allocation-solved-by-Gibbs-sampling-versus-variational-EM-yield-different-results
 
@@ -8,12 +8,12 @@ library("vegan")
 library("ggplot2")
 library("reshape")
 
-papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
-  theme(legend.position='top')
-
 ## read in data
-## Gill data from email Heather sent June 20, 2016 'Gall Lake diatom raw counts'
+## Gull data from email Heather sent June 20, 2016 'Gall Lake diatom raw counts'
 ##    They are as indicated raw counts, with number of diatoms counted per sample as a column
+if (!file.exists('../data/private/7.5mCoreRawCounts.csv')) {
+  stop("get Gull data from Heather or Emma")
+}
 alldiats <- read.csv('../data/private/7.5mCoreRawCounts.csv') 
 
 ## remove things that aren't diatoms and change NA to 0
@@ -78,56 +78,6 @@ for (i in 1:groups){
 }
 par(opar)
 
-## make into ggplot
-agedf <- data.frame(cbind(ldadiat@gamma, topics(ldadiat), alldiats$AGE))
-colnames <- c(as.character(seq_len(ldadiat@k)), "Cluster", "Year")
-names(agedf) <- colnames
-agedf$Cluster <- factor(agedf$Cluster)
-
-agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
-agesplit <- with(agestack, split(agestack, list(Group)))
-#lapply(agesplit, summary)
-
-## try to get this: http://stackoverflow.com/questions/9968975/using-ggplot2-in-r-how-do-i-make-the-background-of-a-graph-different-colours-in
-## or this: http://stackoverflow.com/questions/9847559/conditionally-change-panel-background-with-facet-grid  
-## startstops: cluster 3: bottom to 96, 1: 95, 3: 94-93. 1:92, 3:91, 2:90, 3:88"89, 1:87, 2: 86, 1:85, 3:84,
-## 1: 81:83, 3:79-80, 2:78, 3:76-77, 1:75, 3:74-68, 2:67-31, 1: 30-1   
-startstops <- c(30, 67, 74, 75, 77, 78, 80, 83, 84, 85, 86, 87, 89, 90, 91, 92, 94, 95)
-clusterbins <- agedf$Cluster[startstops]
-yearstarts <- agedf$Year[startstops]
-stopstarts <- sapply( c(30, 67, 74, 75, 77, 78, 80, 83, 84, 85, 86, 87, 89, 90, 91, 92, 94, 95), 
-                      function(x) x + 1)
-yearstops <- agedf$Year[stopstarts]
-yearbins <- rowMeans(cbind(yearstarts, yearstops))
-yearbins <- c(agedf$Year[1], yearbins, agedf$Year[nrow(agedf)])
-## create df: basically pair with one lag so that I have columns xmin, xmax, ymin, ymax, cluster
-##  --> http://stackoverflow.com/questions/26741703/adding-multiple-shadows-rectangles-to-ggplot2-graph
-
-diatrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
-  papertheme +
-  geom_rect(fill=c("grey50", "blue"),xmin = c(-500, 100), xmax= c(100,2000), ymin=-Inf, ymax=Inf,  
-            alpha = 0.01, data=agedf, 
-            inherit.aes = FALSE) +
-  #annotate("rect", xmin=c(-500, 100), xmax=c(100,200), ymin=-Inf, ymax=-Inf, colour = 'blue') +
-  scale_linetype_manual(name='Group', values = c("solid", "longdash","dotdash")) +
-  scale_colour_manual(name="Cluster", values = c("#5e3c99", "#e66101","#b2abd2"))+
-  geom_line() +
-  geom_point(aes(col=Cluster)) +
-  theme(legend.box = "horizontal") +
-  ylab("Proportion of population")
-
-diatermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), size=value)) +
-  papertheme +
-  #scale_color_distiller(name="Value", palette = 'PuOr') +
-  scale_size_continuous(name = "Relative abundance") + #guide = FALSE
-  scale_color_brewer(name="Community", palette = 'Dark2') +
-  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
-  geom_point(alpha=0.6) +
-  theme(legend.box = "vertical") +
-  xlab("Species group") +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
-
-
 
 ## ==================================================================================================
 ## CONISS
@@ -148,4 +98,4 @@ diats$Group <- cutree(clust, k = 4)
 ## ==================================================================================================
 
 ## save chosen lda model
-saveRDS(ldaclado, "../data/lda-clado.rds")
+saveRDS(ldadiat, "../data/private/lda-diat.rds")
