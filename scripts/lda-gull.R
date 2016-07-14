@@ -87,15 +87,18 @@ par(opar)
 ##      and by optimal zonation using the broken-stick method in PSIMPOLL v. 4.10 (Bennett 1996).
 ## from heather: "The broken stick was just something we ran and i dont think ever used the results... 
 ##    it was similar enough to coniss that we just left the coniss"
+set.seed(134)
 diss <- vegdist(diats, method='euclidean')
 clust <- chclust(diss, method = 'coniss')
-bclust <- bstick(clust) # --> 4 zones as drawn in publication
+bclust <- bstick(clust) # --> 4 zones as drawn in publication 
+#(i.e. black line considerably above red line)
 
-diats$Group <- cutree(clust, k = 4)
+diatgroups <- cutree(clust, k = 4)
+saveRDS(diatgroups, "../data/private/gull-coniss.rds")
 
 ## ==================================================================================================
 ## SAVE OBJECTS
 ## ==================================================================================================
 
 ## save chosen lda model
-saveRDS(ldadiat, "../data/private/lda-diat.rds")
+saveRDS(ldadiat, "../data/private/lda-gull.rds")

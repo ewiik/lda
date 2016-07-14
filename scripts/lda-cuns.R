@@ -76,11 +76,14 @@ plot(cladocurve$lambda  ~ cladoyears, type = "o")
 
 ## mvpart not available but these were the four boundaries established (note that it depended
 ##    on whether or not relative or not data) : 1427, 1898, 1940, 1990
+mvpartsplits <- c(1427, 1898, 1940, 1990)
 
+saveRDS(cladocurve, "../data/cuns-pcurve.rds")
+saveRDS(mvpartsplits, "../data/cuns-mvpartsplits.rds")
 
 ## ==================================================================================================
 ## SAVE OBJECTS
 ## ==================================================================================================
 
 ## save chosen model
-saveRDS(ldaclado, "../data/lda-clado.rds")
+saveRDS(ldaclado, "../data/lda-cuns.rds")
