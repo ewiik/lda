@@ -25,37 +25,47 @@ foycounts <- as.matrix(foy)
 foycounts <- apply(foycounts, 2, round)
 
 
-#run LDA for multiple settings of group number.. Gibbs vs VEM?
-SEED <- 2010
+#run LDA for multiple settings of group number, and for VEM and Gibbs
 nlist <- 3:8
 reptimes <- length(nlist)
+myctrl <- list(seed = 2010)
+
 creps <- do.call("list", replicate(reptimes, foycounts, simplify = FALSE))
+ctrls <- do.call("list", replicate(reptimes, myctrl, simplify = FALSE))
 
-mods <- mapply(LDA, k=nlist, x=creps)
-modsgibbs <- mapply(LDA, k=nlist, x=creps, method="Gibbs")
+mods <- mapply(LDA, k=nlist, x=creps, control = ctrls)
+modsgibbs <- mapply(LDA, k=nlist, x=creps, control = ctrls, method="Gibbs")
 
-# compare them
+# compare them with AIC and BIC
 aics <- do.call(rbind,lapply(mods, AIC))
 bics <- do.call(rbind,lapply(mods, BIC))
-#aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
 
-pdf("../data/private/ICs-foy.pdf", onefile = TRUE)
+aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
+bicsgibbs <- do.call(rbind,lapply(modsgibbs, BIC))
+
+pdf("../data/ICs-foy.pdf", onefile = TRUE)
 plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
 plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
 dev.off()
 
-#plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)', ylim=c(130000,300000))
-#points(aicsgibbs ~ nlist, pch = 3)
+pdf("../data/ICsGibbs-foy.pdf", onefile = TRUE)
+plot(aicsgibbs ~ nlist, ylab = 'AIC', xlab='n(groups)')
+plot(bicsgibbs ~ nlist, ylab = 'BIC', xlab='n(groups)')
+dev.off()
 
 ## select best manually.... though gibbs is different
 ## NOTE.... Is the rogue community (6) really necessary out of mods? 
 ldafoy <- mods[[3]]
-#ldafoygibbs <- modsgibbs[[]]
+ldafoygibbs <- modsgibbs[[5]]
 
 #get parameter estimates
 z=posterior(ldafoy)
 commun.plot=z$topics
 commun.spp=z$terms
+
+zgibbs=posterior(ldafoygibbs)
+commun.plotgibbs=zgibbs$topics
+commun.sppgibbs=zgibbs$terms
 
 #plot relative abundance of component communities for each sampling unit 
 #(i.e., along the gradient)
@@ -64,16 +74,11 @@ plot(NA,NA,xlim=c(0,nrow(foy)),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='
 for (i in 1:groups){
   lines(1:nrow(foy),commun.plot[,i],col=i)
 }
-
-#plot relative abundance of species 1:n in component community
-species <- dim(commun.spp)[2]
-opar <- par()
-par(mfrow=c(groups,1))
+groups <- dim(commun.plotgibbs)[2]
+plot(NA,NA,xlim=c(0,nrow(foy)),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='Relative abundance')
 for (i in 1:groups){
-  plot(1:species,commun.spp[i,],type='l',col=i,ylim=c(0,0.5),xlab='Species',ylab='Relative abundance')
+  lines(1:nrow(foy),commun.plotgibbs[,i],col=i)
 }
-par(opar)
-
 
 
 ## ==================================================================================================
@@ -85,7 +90,7 @@ clust <- chclust(diss, method = 'coniss')
 bclust <- bstick(clust) # --> seems like 6
 
 foyclust <- foy
-foyclust$Group <- cutree(clust, k = 6)
+foygroups <- cutree(clust, k = 6)
 
 ## ==================================================================================================
 ## SAVE OBJECTS
@@ -93,3 +98,9 @@ foyclust$Group <- cutree(clust, k = 6)
 
 ## save chosen lda model
 saveRDS(ldafoy, "../data/lda-foy.rds")
+saveRDS(ldafoygibbs, "../data/ldagibbs-foy.rds")
+
+## save clustering objects
+saveRDS(foygroups, "../data/foy-coniss.rds")
+saveRDS(foyyears, "../data/foyyears.rds")
+

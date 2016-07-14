@@ -24,43 +24,63 @@ ccounts <- as.matrix(ccounts)
 ccounts <- apply(ccounts, 2, round)
 
 #run LDA for multiple settings of group number
-SEED <- 2010
 nlist <- 2:9
 reptimes <- length(nlist)
+myctrl <- list(seed = 2010)
+
 creps <- do.call("list", replicate(reptimes, ccounts, simplify = FALSE))
-mods <- mapply(LDA, k=nlist, x=creps)
+ctrls <- do.call("list", replicate(reptimes, myctrl, simplify = FALSE))
+
+mods <- mapply(LDA, k=nlist, x=creps, control = ctrls)
+modsgibbs <- mapply(LDA, k=nlist, x=creps, control = ctrls, method="Gibbs")
 
 # compare them
 aics <- do.call(rbind,lapply(mods, AIC))
 bics <- do.call(rbind,lapply(mods, BIC))
-pdf("../data/private/ICs-clado.pdf", onefile = TRUE)
+
+aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
+bicsgibbs <- do.call(rbind,lapply(modsgibbs, BIC))
+
+pdf("../data/private/ICs-cuns.pdf", onefile = TRUE)
 plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
 plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
 dev.off()
 
+pdf("../data/private/ICsGibbs-cuns.pdf", onefile = TRUE)
+plot(aicsgibbs ~ nlist, ylab = 'AIC', xlab='n(groups)')
+plot(bicsgibbs ~ nlist, ylab = 'BIC', xlab='n(groups)')
+dev.off()
+
 # select best manually
-ldaclado <- mods[[5]]
+ldacuns <- mods[[5]]
+ldacunsgibbs <- modsgibbs[[8]]
+## FIXME: need to increase n for Gibbs seeing as monotonic large decrease for ICs 
+##    up to 9 groups!!
 
 #get parameter estimates
-z=posterior(ldaclado)
+z=posterior(ldacuns)
 commun.plot=z$topics
 commun.spp=z$terms
+
+zgibbs=posterior(ldacunsgibbs)
+commun.plotgibbs=zgibbs$topics
+commun.sppgibbs=zgibbs$terms
 
 #plot relative abundance of component communities for each sampling unit 
 #(i.e., along the gradient)
 groups <- dim(commun.plot)[2]
-plot(NA,NA,xlim=c(0,33),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='Relative abundance')
+spec <- dim(commun.plot)[1]
+plot(NA,NA,xlim=c(0,spec+1),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='Relative abundance')
 for (i in 1:groups){
-  lines(1:32,commun.plot[,i],col=i)
+  lines(1:spec,commun.plot[,i],col=i)
 }
 
-#plot relative abundance of species 1:n in component community
-opar <- par()
-par(mfrow=c(groups,1))
+groups <- dim(commun.plotgibbs)[2]
+specs <- dim(commun.plotgibbs)[1]
+plot(NA,NA,xlim=c(0,spec+1),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='Relative abundance')
 for (i in 1:groups){
-  plot(1:22,commun.spp[i,],type='l',col=i,ylim=c(0,0.5),xlab='Species',ylab='Relative abundance')
+  lines(1:spec,commun.plotgibbs[,i],col=i)
 }
-par(opar)
 
 
 ## ==================================================================================================
@@ -78,12 +98,14 @@ plot(cladocurve$lambda  ~ cladoyears, type = "o")
 ##    on whether or not relative or not data) : 1427, 1898, 1940, 1990
 mvpartsplits <- c(1427, 1898, 1940, 1990)
 
-saveRDS(cladocurve, "../data/cuns-pcurve.rds")
-saveRDS(mvpartsplits, "../data/cuns-mvpartsplits.rds")
-
 ## ==================================================================================================
 ## SAVE OBJECTS
 ## ==================================================================================================
 
 ## save chosen model
-saveRDS(ldaclado, "../data/lda-cuns.rds")
+saveRDS(ldacuns, "../data/lda-cuns.rds")
+saveRDS(ldacunsgibbs, "../data/ldagibbs-cuns.rds")
+
+## save old cluster data
+saveRDS(cladocurve, "../data/cuns-pcurve.rds")
+saveRDS(mvpartsplits, "../data/cuns-mvpartsplits.rds")

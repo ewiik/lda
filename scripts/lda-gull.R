@@ -40,26 +40,45 @@ dcounts <- as.matrix(diats)
 ## FIXME: what about rare species? prune for e.g. 5%? 
 
 #run LDA for multiple settings of group number
-SEED <- 2010
 nlist <- 2:6
 reptimes <- length(nlist)
+myctrl <- list(seed = 2010)
+
 creps <- do.call("list", replicate(reptimes, dcounts, simplify = FALSE))
-mods <- mapply(LDA, k=nlist, x=creps)
+ctrls <- do.call("list", replicate(reptimes, myctrl, simplify = FALSE))
+
+mods <- mapply(LDA, k=nlist, x=creps, control=ctrls)
+modsgibbs <- mapply(LDA, k=nlist, x=creps, control = ctrls, method="Gibbs")
 
 # compare them
 aics <- do.call(rbind,lapply(mods, AIC))
 bics <- do.call(rbind,lapply(mods, BIC))
-pdf("../data/private/ICs-diat.pdf", onefile = TRUE)
+
+aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
+bicsgibbs <- do.call(rbind,lapply(modsgibbs, BIC))
+
+pdf("../data/private/ICs-gull.pdf", onefile = TRUE)
 plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
 plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
 dev.off()
+
+pdf("../data/private/ICsGibbs-gull.pdf", onefile = TRUE)
+plot(aicsgibbs ~ nlist, ylab = 'AIC', xlab='n(groups)')
+plot(bicsgibbs ~ nlist, ylab = 'BIC', xlab='n(groups)')
+dev.off()
+
 # select best manually
-ldadiat <- mods[[2]]
+ldagull <- mods[[2]]
+ldagullgibbs <- mods[[5]]
 
 #get parameter estimates
-z=posterior(ldadiat)
+z=posterior(ldagull)
 commun.plot=z$topics
 commun.spp=z$terms
+
+zgibbs=posterior(ldagullgibbs)
+commun.plotgibbs=zgibbs$topics
+commun.sppgibbs=zgibbs$terms
 
 #plot relative abundance of component communities for each sampling unit 
 #(i.e., along the gradient)
@@ -69,15 +88,11 @@ for (i in 1:groups){
   lines(1:nrow(diats),commun.plot[,i],col=i)
 }
 
-#plot relative abundance of species 1:n in component community
-species <- dim(commun.spp)[2]
-opar <- par()
-par(mfrow=c(groups,1))
+groups <- dim(commun.plotgibbs)[2]
+plot(NA,NA,xlim=c(0,nrow(diats)),ylim=c(0,1),xlab='Gradient/Sampling units',ylab='Relative abundance')
 for (i in 1:groups){
-  plot(1:species,commun.spp[i,],type='l',col=i,ylim=c(0,0.5),xlab='Species',ylab='Relative abundance')
+  lines(1:nrow(diats),commun.plotgibbs[,i],col=i)
 }
-par(opar)
-
 
 ## ==================================================================================================
 ## CONISS
@@ -87,18 +102,21 @@ par(opar)
 ##      and by optimal zonation using the broken-stick method in PSIMPOLL v. 4.10 (Bennett 1996).
 ## from heather: "The broken stick was just something we ran and i dont think ever used the results... 
 ##    it was similar enough to coniss that we just left the coniss"
-set.seed(134)
+
 diss <- vegdist(diats, method='euclidean')
 clust <- chclust(diss, method = 'coniss')
 bclust <- bstick(clust) # --> 4 zones as drawn in publication 
 #(i.e. black line considerably above red line)
 
 diatgroups <- cutree(clust, k = 4)
-saveRDS(diatgroups, "../data/private/gull-coniss.rds")
 
 ## ==================================================================================================
 ## SAVE OBJECTS
 ## ==================================================================================================
 
 ## save chosen lda model
-saveRDS(ldadiat, "../data/private/lda-gull.rds")
+saveRDS(ldagull, "../data/private/lda-gull.rds")
+saveRDS(ldagullgibbs, "../data/private/ldagibbs-gull.rds")
+
+## save other strati objects
+saveRDS(diatgroups, "../data/private/gull-coniss.rds")
