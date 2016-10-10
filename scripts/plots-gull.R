@@ -4,13 +4,13 @@
 library("topicmodels")
 library("analogue")
 library("ggplot2")
-library("reshape")
+library("reshape2")
 library("cowplot")
 library("gridExtra")
 library("extrafont") # Arial innit
 
-
-papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
+## create a theme to save linespace in plots
+papertheme <- theme_bw(base_size=14, base_family = 'Arial') +
   theme(legend.position='top')
 
 ## read in data
@@ -47,16 +47,16 @@ names(agedf) <- colnames
 agedf$Cluster <- factor(agedf$Cluster)
 
 agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
-agesplit <- with(agestack, split(agestack, list(Group)))
+agesplit <- with(agestack, split(agestack, list('Group')))
 #lapply(agesplit, summary)
 
-agedfgibbs <- data.frame(cbind(ldagullgibbs@gamma, topics(ldagullgibbs), cladoyears))
+agedfgibbs <- data.frame(cbind(ldagullgibbs@gamma, topics(ldagullgibbs), alldiats$AGE))
 colnamesgibbs <- c(as.character(seq_len(ldagullgibbs@k)), "Cluster", "Year")
 names(agedfgibbs) <- colnamesgibbs
 agedfgibbs$Cluster <- factor(agedfgibbs$Cluster)
 
 agestackgibbs <- melt(agedfgibbs, id.vars=c('Year','Cluster'), variable_name = 'Group')
-agesplitgibbs <- with(agestackgibbs, split(agestackgibbs, list(Group)))
+agesplitgibbs <- with(agestackgibbs, split(agestackgibbs, list('Group')))
 
 ## create info to colour background
 diffs <- which(abs(diff(as.numeric(agedf$Cluster))) > 0)
@@ -85,7 +85,7 @@ rectdfgibbs <- data.frame(xmin = c(agedfgibbs$Year[1], yearbinsgibbs),
                           Cluster = c(clusterbinsgibbs, agedfgibbs$Cluster[nrow(agedfgibbs)]))
 
 ## create basic line plot of groups
-gullrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
+gullrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=variable)) +
   papertheme +
   geom_rect(data=rectdf, inherit.aes = FALSE, 
             aes(xmin = xmin, xmax= xmax, ymin=-Inf, ymax=Inf, group=factor(Cluster),
@@ -97,7 +97,7 @@ gullrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=Group)) +
   theme(legend.box = "horizontal") +
   ylab("Proportion of population")
 
-gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=Group)) +
+gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable)) +
   papertheme +
   geom_rect(data=rectdfgibbs, inherit.aes = FALSE, 
             aes(xmin = xmin, xmax= xmax, ymin=-Inf, ymax=Inf, group=factor(Cluster),
@@ -112,7 +112,7 @@ gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=Group)) +
   ylab("Proportion of population")
 
 ## create bubble plot of groups
-gulltermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), size=value)) +
+gulltermit <- ggplot(data = agestack, aes(x=Year, y=variable, col=factor(Cluster), size=value)) +
   papertheme +
   #scale_color_distiller(name="Value", palette = 'PuOr') +
   scale_size_continuous(name = "Relative abundance") + #guide = FALSE
@@ -120,7 +120,7 @@ gulltermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), 
   #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
   geom_point(alpha=0.6) +
   theme(legend.box = "vertical") +
-  xlab("Species group") +
+  ylab("Species group") +
   guides(colour=guide_legend(nrow=1,byrow=TRUE))
 
 ## create bubble plot of species

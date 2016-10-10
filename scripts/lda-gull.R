@@ -7,6 +7,11 @@ library("rioja")
 library("vegan")
 library("ggplot2")
 library("reshape")
+library("extrafont")
+
+## create a theme to save linespace in plots
+papertheme <- theme_bw(base_size=14, base_family = 'Arial') +
+  theme(legend.position='top')
 
 ## read in data
 ## Gull data from email Heather sent June 20, 2016 'Gall Lake diatom raw counts'
@@ -50,21 +55,37 @@ ctrls <- do.call("list", replicate(reptimes, myctrl, simplify = FALSE))
 mods <- mapply(LDA, k=nlist, x=creps, control=ctrls)
 modsgibbs <- mapply(LDA, k=nlist, x=creps, control = ctrls, method="Gibbs")
 
-# compare them
+## compare them
 aics <- do.call(rbind,lapply(mods, AIC))
 bics <- do.call(rbind,lapply(mods, BIC))
 
 aicsgibbs <- do.call(rbind,lapply(modsgibbs, AIC))
 bicsgibbs <- do.call(rbind,lapply(modsgibbs, BIC))
 
-pdf("../data/private/ICs-gull.pdf", onefile = TRUE)
-plot(aics ~ nlist, ylab = 'AIC', xlab='n(groups)')
-plot(bics ~ nlist, ylab = 'BIC', xlab='n(groups)')
-dev.off()
+## make into one data frame for ggplot
+aicsall <- as.data.frame(rbind(aics, aicsgibbs))
+bicsall <- as.data.frame(rbind(bics, bicsgibbs))
 
-pdf("../data/private/ICsGibbs-gull.pdf", onefile = TRUE)
-plot(aicsgibbs ~ nlist, ylab = 'AIC', xlab='n(groups)')
-plot(bicsgibbs ~ nlist, ylab = 'BIC', xlab='n(groups)')
+aicsall$IC <- "AIC"
+bicsall$IC <- "BIC"
+aicsall$Sampling <- rep(c("VEM", "Gibbs"), each=nrow(aicsall)/2)
+bicsall$Sampling <- rep(c("VEM", "Gibbs"), each=nrow(bicsall)/2)
+
+icsall <- rbind(aicsall, bicsall)
+icsall$Ngroups <- rep(nlist)
+
+## plot output
+ICplot <- ggplot(icsall, aes(x=Ngroups, y=V1, group=IC)) +
+  papertheme +
+  geom_point() +
+  facet_grid(Sampling ~ IC, scales='free_y') +
+  guides(colour=guide_legend(nrow=1,bycol =TRUE,title.position = 'left')) +
+  theme(axis.title.y=element_blank()) +
+  xlab("n(groups)")
+## FIXME: Gibbs just likes lots of groups...
+
+pdf("../data/private/ICs-gull.pdf", onefile = TRUE)
+ICplot
 dev.off()
 
 # select best manually

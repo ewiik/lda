@@ -4,13 +4,13 @@
 library("topicmodels")
 library("analogue")
 library("ggplot2")
-library("reshape")
+library("reshape2")
 library("cowplot")
 library("gridExtra")
 library("extrafont") # Arial innit
 
-
-papertheme <- theme_bw(base_size=12, base_family = 'Arial') +
+## create a theme to save linespace in plots
+papertheme <- theme_bw(base_size=14, base_family = 'Arial') +
   theme(legend.position='top')
 
 ## read in data
@@ -28,16 +28,16 @@ names(agedf) <- colnames
 agedf$Cluster <- factor(agedf$Cluster)
 
 agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
-agesplit <- with(agestack, split(agestack, list(Group)))
+agesplit <- with(agestack, split(agestack, list('Group')))
 #lapply(agesplit, summary)
 
-agedfgibbs <- data.frame(cbind(ldafoygibbs@gamma, topics(ldafoygibbs), cladoyears))
+agedfgibbs <- data.frame(cbind(ldafoygibbs@gamma, topics(ldafoygibbs), foyyears))
 colnamesgibbs <- c(as.character(seq_len(ldafoygibbs@k)), "Cluster", "Year")
 names(agedfgibbs) <- colnamesgibbs
 agedfgibbs$Cluster <- factor(agedfgibbs$Cluster)
 
 agestackgibbs <- melt(agedfgibbs, id.vars=c('Year','Cluster'), variable_name = 'Group')
-agesplitgibbs <- with(agestackgibbs, split(agestackgibbs, list(Group)))
+agesplitgibbs <- with(agestackgibbs, split(agestackgibbs, list('Group')))
 
 ## create data frame to colour backtround by Community
 diffs <- which(abs(diff(as.numeric(agedf$Cluster))) > 0)
@@ -64,7 +64,7 @@ rectdfgibbs <- data.frame(xmin = c(agedfgibbs$Year[1], yearbinsgibbs),
                           xmax = c(yearbinsgibbs, agedfgibbs$Year[nrow(agedfgibbs)]),
                           Cluster = c(clusterbinsgibbs, agedfgibbs$Cluster[nrow(agedfgibbs)]))
 
-## create basic line plot of groups
+## create basic point/line plot of groups
 foyrels <- ggplot(data = agestack, aes(x=Year, y=value)) + #, lty=Group
   papertheme +
   geom_rect(data=rectdf, inherit.aes = FALSE, 
@@ -72,16 +72,18 @@ foyrels <- ggplot(data = agestack, aes(x=Year, y=value)) + #, lty=Group
                 fill=factor(Cluster)), alpha = 0.3) +
   #scale_linetype_manual(name='Species group', values = c("solid", "longdash","dotdash",
   #                                              "longdash", "dotdash")) +
+  #geom_point(aes(col=variable), alpha=0.5, size=0.7) +
   scale_colour_manual(name="Species group", values = c("#5e3c99", "#e66101","#b2abd2", 
-                                                       "black", "blue"))+
+                                                       "black", "blue", "#A63603"))+
   scale_fill_manual(name="Community", values = c("#5e3c99", "#e66101","#b2abd2",
-                                                 "#F7F7F7", "#FDB863"))+
-  #geom_line() +
-  geom_point(aes(col=Group), alpha=0.5) +
+                                                 "#F7F7F7", "#3182BD", "#A63603"))+
+  stat_smooth(method='loess', mapping=aes(col=variable), show.legend = FALSE, span=0.01, se=FALSE) + 
   theme(legend.box = "horizontal") +
-  ylab("Proportion of population")
+  ylab("Proportion of population") +
+  guides(colour = guide_legend(override.aes = list(alpha = 1)))
 
-foyrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=Group)) +
+## FIXME: not functional, awaiting resolution on n(groups) for gibbs
+foyrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable)) +
   papertheme +
   geom_rect(data=rectdfgibbs, inherit.aes = FALSE, 
             aes(xmin = xmin, xmax= xmax, ymin=-Inf, ymax=Inf, group=factor(Cluster),
@@ -94,7 +96,7 @@ foyrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=Group)) +
   ylab("Proportion of population")
 
 ## create bubble plot of groups
-foytermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), size=value)) +
+foytermit <- ggplot(data = agestack, aes(y=variable, x=Year, col=factor(Cluster), size=value)) +
   papertheme +
   #scale_color_distiller(name="Value", palette = 'PuOr') +
   scale_size_continuous(name = "Relative abundance") + #guide = FALSE
@@ -102,15 +104,46 @@ foytermit <- ggplot(data = agestack, aes(y=Year, x=Group, col=factor(Cluster), s
   #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
   geom_point(alpha=0.3) +
   theme(legend.box = "vertical") +
-  xlab("Species group") +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
+  ylab("Species group") +
+  guides(colour=guide_legend(nrow=1,byrow=TRUE, override.aes = list(alpha = 1)))
 
-## create bubble plot of species
+## bubble plot of species
+diatspec <- as.data.frame(t(posterior(ldafoy)$terms))
+diatmax <- do.call(rbind, as.list(apply(FUN = max, MARGIN=1, X=diatspec)))
+removenames <- rownames(diatmax)[which(diatmax < 0.01)]
+remove <- which(diatmax < 0.01)
+diatred <- diatspec[-remove,]
+
+diatstack <- cbind(stack(diatred), rep(rownames(diatred), times = ldafoy@k))
+names(diatstack)[2] <- "Cluster"
+names(diatstack)[3] <- "ind"
+
+## can we order them?
+speclist <- vector(mode="list")
+for (i in 1:ldafoy@k) {
+  speclist[[i]] <- diatstack$ind[which(diatstack$values > 0.18 & diatstack$Cluster == i)]
+}
+speclist <- unlist(speclist)
+remove <- which(duplicated(speclist))
+speclist <- as.character(speclist[-remove])
+allspec <- c(speclist, ldafoy@terms)
+allspec <- allspec[-which(duplicated(allspec))]
+bubbleorder <- match(allspec, unique(diatstack$ind))
+diatstack$ind <-factor(diatstack$ind, levels=unique(diatstack$ind)[c(bubbleorder)])
+
+speciesbubble <- ggplot(data = diatstack, aes(y=ind, x=Cluster, size=values)) +
+  papertheme +
+  scale_size_continuous(name="Relative abundance") + #guide = FALSE
+  geom_point(alpha=0.6) +
+  theme(legend.box = "vertical") +
+  xlab("Species group") +
+  ylab(NULL) +
+  guides(colour=guide_legend(nrow=1,byrow=TRUE))
 
 
 ## ============================================================================================
 ## SAVE PLOTS
 ## ============================================================================================
-saveRDS(foyrels, "../data/gg-foy-line.rds")
-saveRDS(foytermit, "../data/gg-foy-bubble.rds")
-
+saveRDS(foyrels, "../docs/private/gg-foy-line.rds")
+saveRDS(foytermit, "../docs/private/gg-foy-bubble.rds")
+saveRDS(speciesbubble, "../docs/private/gg-foy-spbubble.rds")
