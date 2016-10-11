@@ -6,7 +6,7 @@ library("topicmodels")
 library("rioja")
 library("vegan")
 library("ggplot2")
-library("reshape")
+library("reshape2")
 library("extrafont")
 
 ## create a theme to save linespace in plots

@@ -4,7 +4,7 @@
 library("topicmodels")
 library("analogue")
 library("ggplot2")
-library("reshape")
+library("reshape2")
 library("cowplot")
 library("gridExtra")
 library("extrafont") # Arial innit

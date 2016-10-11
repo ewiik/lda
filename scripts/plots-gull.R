@@ -53,7 +53,7 @@ agestack <- melt(agedf, id.vars=c('Year','Cluster'), variable_name = 'Group')
 agesplit <- with(agestack, split(agestack, list('Group')))
 #lapply(agesplit, summary)
 
-agedfgibbs <- data.frame(cbind(ldagullgibbs@gamma, topics(ldagullgibbs), alldiats$AGE))
+agedfgibbs <- data.frame(cbind(ldagullgibbs@gamma, topics(ldagullgibbs), diatages))
 colnamesgibbs <- c(as.character(seq_len(ldagullgibbs@k)), "Cluster", "Year")
 names(agedfgibbs) <- colnamesgibbs
 agedfgibbs$Cluster <- factor(agedfgibbs$Cluster)
@@ -100,15 +100,20 @@ gullrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=variable)) +
   theme(legend.box = "horizontal") +
   ylab("Proportion of population") + xlab("Year (BP)")
 
-gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable)) +
+gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable, col=variable)) +
   papertheme +
   geom_rect(data=rectdfgibbs, inherit.aes = FALSE, 
             aes(xmin = xmin, xmax= xmax, ymin=-Inf, ymax=Inf, group=factor(Cluster),
                 fill=factor(Cluster)), alpha = 0.3) +
   scale_linetype_manual(name='Species Group', values = c("solid", "longdash","dotdash",
-                                                         "solid", "longdash","dotdash")) +
+                                                         "solid", "longdash","dotdash",
+                                                         "dotdash", "dotdash","solid")) +
   scale_fill_manual(name="Community", values = c("#5e3c99", "#e66101","#b2abd2",
-                                                 "grey50", "yellow","blue"))+
+                                                 "grey50", "yellow","blue",
+                                                 "#5e3c99", "#e66101","#b2abd2"))+
+  scale_colour_manual(name="Species Group", values = c("#5e3c99", "#e66101","#b2abd2",
+                                                 "grey50", "yellow","blue",
+                                                 "#5e3c99", "#e66101","#b2abd2"))+
   geom_line() +
   #geom_point(aes(col=Cluster)) +
   theme(legend.box = "horizontal") +
