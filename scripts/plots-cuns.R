@@ -22,6 +22,9 @@ ldacunsgibbs <- readRDS("../data/ldagibbs-cuns.rds")
 
 cladoyears <- readRDS("../data/cladoyears.rds")
 
+## change years to BP (currently AD)
+cladoyears <- cladoyears - 1950
+
 ## create suitable data frames
 agedf <- data.frame(cbind(ldacuns@gamma, topics(ldacuns), cladoyears))
 colnames <- c(as.character(seq_len(ldacuns@k)), "Cluster", "Year")
@@ -84,7 +87,7 @@ cunsrels <- ggplot(data = agestack, aes(x=Year, y=value, col=variable, lty=varia
   theme(legend.box = "horizontal") +
   guides(fill=guide_legend(nrow=1,bycol =TRUE,title.position = 'left'),
          lty=guide_legend(nrow=1, bycol =TRUE,title.position = 'left')) +
-  ylab("Proportion of population")
+  ylab("Proportion of population") + xlab("Year (BP)")
 
 cunsrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, col=variable, lty=variable)) +
   papertheme +
@@ -107,7 +110,7 @@ cunsrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, col=variable,
   theme(legend.box = "horizontal") +
   guides(fill=guide_legend(nrow=1,bycol =TRUE,title.position = 'left'),
          lty=guide_legend(nrow=1, bycol =TRUE,title.position = 'left')) +
-  ylab("Proportion of population")
+  ylab("Proportion of population") + xlab("Year (BP)")
 
 ## create bubble plot of groups
 cunstermit <- ggplot(data = agestack, aes(x=Year, y=variable, col=Cluster, size=value)) +
@@ -118,7 +121,7 @@ cunstermit <- ggplot(data = agestack, aes(x=Year, y=variable, col=Cluster, size=
   #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
   geom_point(alpha=0.6) +
   theme(legend.box = "vertical") +
-  ylab("Species group") +
+  ylab("Species group") + xlab("Year (BP)") +
   guides(colour=guide_legend(nrow=1,byrow=TRUE, override.aes = list(alpha = 1)))
 
 ## create bubble plot of species
@@ -137,21 +140,32 @@ speclist <- as.character(speclist[-remove])
 allspec <- c(speclist, ldacuns@terms)
 allspec <- allspec[-which(duplicated(allspec))]
 bubbleorder <- match(allspec, ldacuns@terms)
-cladostack$ind <-factor(cladostack$ind, levels=unique(cladostack$ind)[c(bubbleorder)])
 
-speciesbubble <- ggplot(data = cladostack, aes(y=ind, x=Cluster, size=values)) +
+## give the clados their real names back and make sure to preserve order
+cladonames <- data.frame(real = c('Chydorus sphaericus', 'Alonella excisa', 'Bosmina spp.', 'Alonella nana',
+                           'Graptoleberis testudinae', 'Alona guttata-rectangula agg.', 
+                           'Alona quadrangularis','Pleuroxus laevis', 'Daphnia hyalina agg.', 
+                           'Daphnia pulex','Acroperus harpae','Eurycercus lamellatus', 'Alonella exigua',
+                           'Leydigia leydigi','Pleuroxus truncatus','cf Camptocercus','Alona intermedia',
+                           'Sida crystallina','Alona costata','Alona rustica','Alona affinis',
+                           'Chydorus piger'), ind=allspec)
+cladostack <- merge(cladostack, cladonames, sort=FALSE) # FALSE preserves allspec order,
+# therefore bubbleorder still works
+cladostack$ind <-factor(cladostack$ind, levels=unique(cladostack$ind)[c(bubbleorder)])
+cladostack$real <-factor(cladostack$real, levels=unique(cladostack$real)[c(bubbleorder)])
+
+## plot the bubbles
+speciesbubble <- ggplot(data = cladostack, aes(y=real, x=Cluster, size=values)) +
   papertheme +
-  scale_size_continuous(name="Relative abundance") + #guide = FALSE
+  scale_size_continuous(name="Relative abundance") + 
   geom_point(alpha=0.6) +
   theme(legend.box = "vertical") +
   xlab("Species group") +
-  ylab(NULL) +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
-
+  ylab(NULL) 
 
 ## ============================================================================================
 ## SAVE PLOTS
 ## ============================================================================================
-saveRDS(cunsrels, "../docs/gg-cuns-line.rds")
-saveRDS(cunstermit, "../docs/gg-cuns-bubble.rds")
-saveRDS(speciesbubble, "../docs/private/gg-cuns-spbubble.rds")
+saveRDS(cunsrels, "../data/private/gg-cuns-line.rds")
+saveRDS(cunstermit, "../data/private/gg-cuns-bubble.rds")
+saveRDS(speciesbubble, "../data/private/gg-cuns-spbubble.rds")

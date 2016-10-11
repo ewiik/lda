@@ -26,9 +26,7 @@ if (!file.exists('../data/private/7.5mCoreRawCounts.csv')) {
 alldiats <- read.csv('../data/private/7.5mCoreRawCounts.csv') 
 
 ## clean as per lda-gull.R
-notdiats <- which(names(alldiats) %in% c('bottom', 'top', 'AGE', 'DI.Depth',
-                                         'Unknowns', 'X..Diatoms', 'Chrysophyte.scales',
-                                         'Chysophyte.cysts', 'C.D.index', 'Microspheres'))
+## remove things that aren't diatoms and change NA to 0
 alldiats[is.na(alldiats)] <- 0
 if(any(rowSums(alldiats[,-notdiats], na.rm = TRUE) == 0)) {
   discardrows <- which(rowSums(alldiats[,-notdiats]) == 0)
@@ -38,10 +36,15 @@ if(any(colSums(alldiats, na.rm = TRUE) == 0)) {
   discardcols <- which(colSums(alldiats, na.rm = TRUE) == 0)
   alldiats <- alldiats[, -discardcols]
 }
+notdiats <- which(names(alldiats) %in% c('bottom', 'top', 'AGE', 'DI.Depth',
+                                         'Unknowns', 'X..Diatoms', 'Chrysophyte.scales',
+                                         'Chysophyte.cysts', 'C.D.index', 'Microspheres'))
 
+diatages <- alldiats$AGE - 1950 #make to BP
+alldiats <- alldiats[,-notdiats]
 
 ## create data frame to colour backtround by Community
-agedf <- data.frame(cbind(ldagull@gamma, topics(ldagull), alldiats$AGE))
+agedf <- data.frame(cbind(ldagull@gamma, topics(ldagull), diatages))
 colnames <- c(as.character(seq_len(ldagull@k)), "Cluster", "Year")
 names(agedf) <- colnames
 agedf$Cluster <- factor(agedf$Cluster)
@@ -95,7 +98,7 @@ gullrels <- ggplot(data = agestack, aes(x=Year, y=value, lty=variable)) +
   geom_line() +
   #geom_point(aes(col=Cluster)) +
   theme(legend.box = "horizontal") +
-  ylab("Proportion of population")
+  ylab("Proportion of population") + xlab("Year (BP)")
 
 gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable)) +
   papertheme +
@@ -109,7 +112,8 @@ gullrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable)
   geom_line() +
   #geom_point(aes(col=Cluster)) +
   theme(legend.box = "horizontal") +
-  ylab("Proportion of population")
+  ylab("Proportion of population") +
+  xlab("Year (BP)")
 
 ## create bubble plot of groups
 gulltermit <- ggplot(data = agestack, aes(x=Year, y=variable, col=factor(Cluster), size=value)) +
@@ -121,7 +125,7 @@ gulltermit <- ggplot(data = agestack, aes(x=Year, y=variable, col=factor(Cluster
   geom_point(alpha=0.6) +
   theme(legend.box = "vertical") +
   ylab("Species group") +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
+  guides(colour=guide_legend(nrow=1,byrow=TRUE)) + xlab("Year (BP)")
 
 ## create bubble plot of species
 diatspec <- as.data.frame(t(posterior(ldagull)$terms))
@@ -130,23 +134,36 @@ removenames <- rownames(diatmax)[which(diatmax < 0.01)]
 remove <- which(diatmax < 0.01)
 diatred <- diatspec[-remove,]
 
-diatstack <- cbind(stack(diatred), rep(rownames(diatred), times = 3))
-names(diatstack)[3] <- "Species"
-ggplot(data = diatstack, aes(y=Species, x=ind, size=values)) +
+diatstack <- cbind(stack(diatred), rep(rownames(diatred), times = ldagull@k))
+names(diatstack)[2] <- "Cluster"
+names(diatstack)[3] <- "ind"
+diatstack$ind <- as.character(diatstack$ind)
+
+## can we order them?
+speclist <- vector(mode="list")
+for (i in 1:ldagull@k) {
+  speclist[[i]] <- diatstack$ind[which(diatstack$values > 0.05 & diatstack$Cluster == i)]
+}
+speclist <- unlist(speclist)
+remove <- which(duplicated(speclist))
+speclist <- as.character(speclist[-remove])
+allspec <- c(speclist, unique(diatstack$ind))
+allspec <- allspec[-which(duplicated(allspec))]
+bubbleorder <- match(allspec, unique(diatstack$ind))
+diatstack$ind <-factor(diatstack$ind, levels=unique(diatstack$ind)[c(bubbleorder)])
+
+speciesbubble <- ggplot(data = diatstack, aes(y=ind, x=Cluster, size=values)) +
   papertheme +
-  #scale_color_distiller(name="Value", palette = 'PuOr') +
-  scale_size_continuous(name="Relative abundance") + #guide = FALSE
-  scale_color_brewer(name="Community", palette = 'Dark2') +
-  #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
+  scale_size_continuous(name="Relative abundance", breaks=c(0.01, 0.05, 0.1, 0.3)) + 
   geom_point(alpha=0.6) +
   theme(legend.box = "vertical") +
   xlab("Species group") +
-  ylab(NULL) +
-  guides(colour=guide_legend(nrow=1,byrow=TRUE))
+  ylab(NULL)
 
 ## ===============================================================================
 ## SAVE PLOTS
 ## ===============================================================================
 saveRDS(gullrels, "../data/private/gg-gull-line.rds")
 saveRDS(gulltermit, "../data/private/gg-gull-bubble.rds")
+saveRDS(speciesbubble, "../data/private/gg-gull-spbubble.rds")
 

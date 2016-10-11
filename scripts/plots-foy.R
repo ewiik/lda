@@ -77,10 +77,13 @@ foyrels <- ggplot(data = agestack, aes(x=Year, y=value)) + #, lty=Group
                                                        "black", "blue", "#A63603"))+
   scale_fill_manual(name="Community", values = c("#5e3c99", "#e66101","#b2abd2",
                                                  "#F7F7F7", "#3182BD", "#A63603"))+
-  stat_smooth(method='loess', mapping=aes(col=variable), show.legend = FALSE, span=0.01, se=FALSE) + 
+  stat_smooth(method='loess', mapping=aes(col=variable), size=0.5, show.legend = TRUE, span=0.01, se=FALSE) + 
   theme(legend.box = "horizontal") +
-  ylab("Proportion of population") +
-  guides(colour = guide_legend(override.aes = list(alpha = 1)))
+  ylab("Proportion of population \n (LOESS fit)") + xlab("Year (BP)") +
+  guides(fill=guide_legend(nrow=1,bycol =TRUE,title.position = 'left'),
+         col=guide_legend(nrow=1, bycol =TRUE,title.position = 'left')) 
+  #guides(colour = guide_legend(override.aes = list(alpha = 1)))
+## FIXME: how to take out lines from the fill legend?
 
 ## FIXME: not functional, awaiting resolution on n(groups) for gibbs
 foyrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable)) +
@@ -93,7 +96,7 @@ foyrelsgibbs <- ggplot(data = agestackgibbs, aes(x=Year, y=value, lty=variable))
   geom_line() +
   #geom_point(aes(col=Cluster)) +
   theme(legend.box = "horizontal") +
-  ylab("Proportion of population")
+  ylab("Proportion of population") + xlab("Year (BP)")
 
 ## create bubble plot of groups
 foytermit <- ggplot(data = agestack, aes(y=variable, x=Year, col=factor(Cluster), size=value)) +
@@ -104,7 +107,7 @@ foytermit <- ggplot(data = agestack, aes(y=variable, x=Year, col=factor(Cluster)
   #geom_abline(intercept = c(1390, 1900, 1930, 2000), col='grey50', slope = 0) +
   geom_point(alpha=0.3) +
   theme(legend.box = "vertical") +
-  ylab("Species group") +
+  ylab("Species group") + xlab("Year (BP)") +
   guides(colour=guide_legend(nrow=1,byrow=TRUE, override.aes = list(alpha = 1)))
 
 ## bubble plot of species
@@ -144,6 +147,6 @@ speciesbubble <- ggplot(data = diatstack, aes(y=ind, x=Cluster, size=values)) +
 ## ============================================================================================
 ## SAVE PLOTS
 ## ============================================================================================
-saveRDS(foyrels, "../docs/private/gg-foy-line.rds")
-saveRDS(foytermit, "../docs/private/gg-foy-bubble.rds")
-saveRDS(speciesbubble, "../docs/private/gg-foy-spbubble.rds")
+saveRDS(foyrels, "../data/private/gg-foy-line.rds")
+saveRDS(foytermit, "../data/private/gg-foy-bubble.rds")
+saveRDS(speciesbubble, "../data/private/gg-foy-spbubble.rds")
